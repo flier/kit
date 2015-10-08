@@ -1,3 +1,4 @@
+//go:generate kitgen -t StringService
 package main
 
 import (
@@ -14,6 +15,7 @@ import (
 )
 
 // StringService provides operations on strings.
+//kit:gen json
 type StringService interface {
 	Uppercase(string) (string, error)
 	Count(string) int
