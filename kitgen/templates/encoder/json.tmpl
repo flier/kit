@@ -1,0 +1,13 @@
+{{range .Methods}}
+type {{.Name}}Request struct {
+	{{range .Params}}
+		{{.Names | join}} {{.Type}}
+	{{end}}
+}
+
+type {{.Name}}Response struct {
+	{{range .Results}}
+		{{.Names | join}} {{.Type}}
+	{{end}}
+}
+{{end}}

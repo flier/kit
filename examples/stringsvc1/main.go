@@ -15,7 +15,8 @@ import (
 )
 
 // StringService provides operations on strings.
-//kit:gen json
+//kit:encoder 		json,yaml
+//kit:transport		http
 type StringService interface {
 	Uppercase(string) (string, error)
 	Count(string) int
