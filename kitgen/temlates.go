@@ -186,12 +186,14 @@ func FSMustString(useLocal bool, name string) string {
 
 var _escData = map[string]*_escFile{
 
-	"/templates/json.go": {
-		local:   "templates/json.go",
-		size:    0,
-		modtime: 1444309248,
+	"/templates/encoder/json.tmpl": {
+		local:   "templates/encoder/json.tmpl",
+		size:    211,
+		modtime: 1444355644,
 		compressed: `
-H4sIAAAJbogA/wEAAP//AAAAAAAAAAA=
+H4sIAAAJbogA/5TMSwoCMRAE0HVyij7B3EQR8QLBKfzgdMZ0ZyFt390EghvdzK6gqp5ZSXwBTTvoNc/i
+HvW1gsymfVrgfsSzQpRESz0rWQzfyyGVtPRHCGMu9KZ7vrF7B04N6q0ZeG7B448ta2bBP7x19aGb9JE+
+AQAA//9GxkVF0wAAAA==
 `,
 	},
 
@@ -203,5 +205,10 @@ H4sIAAAJbogA/wEAAP//AAAAAAAAAAA=
 	"/templates": {
 		isDir: true,
 		local: "/templates",
+	},
+
+	"/templates/encoder": {
+		isDir: true,
+		local: "/templates/encoder",
 	},
 }

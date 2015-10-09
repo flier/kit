@@ -5,6 +5,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"reflect"
 	"strings"
@@ -16,13 +17,34 @@ import (
 )
 
 var (
-	funcMap = template.FuncMap{
-		"join":  func(a []string) string { return strings.Join(a, ",") },
-		"title": func(s string) string { return strings.ToTitle(s) },
+	topLevelTemplate = template.New("/").Funcs(template.FuncMap{
+		"join":         func(a []string) string { return strings.Join(a, ",") },
+		"capitalize":   func(s string) string { return strings.ToTitle(s) },
+		"uncapitalize": func(s string) string { return strings.ToLower(s[:1]) + s[1:] },
+		"upper":        func(s string) string { return strings.ToUpper(s) },
+		"lower":        func(s string) string { return strings.ToLower(s) },
+	})
+)
+
+func loadTemplate(name string) (*template.Template, error) {
+	log.Printf("loading template: %s", name)
+
+	for _, tmpl := range topLevelTemplate.Templates() {
+		if tmpl.Name() == name {
+			return tmpl, nil
+		}
 	}
 
-	templates = make(map[string]*template.Template)
-)
+	if f, err := FS(*debugMode).Open(name); err != nil {
+		return nil, fmt.Errorf("fail to open template, %s", err)
+	} else if data, err := ioutil.ReadAll(f); err != nil {
+		return nil, fmt.Errorf("fail to read template, %s", err)
+	} else if tmpl, err := topLevelTemplate.Parse(string(data)); err != nil {
+		return nil, fmt.Errorf("fail to parse template, %s", err)
+	} else {
+		return tmpl, nil
+	}
+}
 
 type Render struct {
 	buf bytes.Buffer // Accumulated output.
@@ -101,6 +123,16 @@ func (r *TypeRender) visit(node ast.Node) bool {
 						log.Printf("found specs: %s", out.String())
 					}
 				}
+
+				for decorator, names := range decorators {
+					for _, name := range names {
+						if tmpl, err := loadTemplate(fmt.Sprintf("/templates/%s/%s.tmpl", decorator, name)); err != nil {
+							log.Fatal(err)
+						} else if err := tmpl.Execute(&r.buf, specs); err != nil {
+							log.Fatal(err)
+						}
+					}
+				}
 			}
 		}
 	}
@@ -143,9 +175,7 @@ func (r *TypeRender) parseDecorators(comments *ast.CommentGroup) (decorators map
 	return
 }
 
-func (r *TypeRender) parseSpecs(specs []ast.Spec) map[string]interface{} {
-	types := make(map[string]interface{})
-
+func (r *TypeRender) parseSpecs(specs []ast.Spec) (types []map[string]interface{}) {
 	for _, spec := range specs {
 		if typeSpec, ok := spec.(*ast.TypeSpec); ok && typeSpec.Name != nil && typeSpec.Name.Name == r.name {
 			if intfType, ok := typeSpec.Type.(*ast.InterfaceType); ok {
@@ -161,12 +191,15 @@ func (r *TypeRender) parseSpecs(specs []ast.Spec) map[string]interface{} {
 					}
 				}
 
-				types[typeSpec.Name.Name] = methods
+				types = append(types, map[string]interface{}{
+					"Name":    typeSpec.Name.Name,
+					"Methods": methods,
+				})
 			}
 		}
 	}
 
-	return types
+	return
 }
 
 func (r *TypeRender) parseFieldList(fields *ast.FieldList) (types []map[string]interface{}) {
@@ -182,14 +215,16 @@ func (r *TypeRender) parseFieldList(fields *ast.FieldList) (types []map[string]i
 				names = append(names, strings.Title(name.Name))
 			}
 		} else {
-			names = append(names, fmt.Sprintf("%s%d", strings.Title(typeName), i))
+			names = append(names, fmt.Sprintf("%s%d", strings.Title(typeName[:1]), i))
 			i += 1
 		}
 
-		types = append(types, map[string]interface{}{
-			"Names": names,
-			"Type":  typeName,
-		})
+		for _, name := range names {
+			types = append(types, map[string]interface{}{
+				"Name": name,
+				"Type": typeName,
+			})
+		}
 	}
 
 	return

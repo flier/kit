@@ -1,13 +1,51 @@
-{{range .Methods}}
-type {{.Name}}Request struct {
-	{{range .Params}}
-		{{.Names | join}} {{.Type}}
-	{{end}}
-}
+{{range $}}
+    {{$service := .Name}}
+    {{range .Methods}}
+        type {{$service | uncapitalize}}{{.Name}}JsonRequest struct {
+        	{{range .Params}}
+                {{.Name | capitalize}} {{.Type}} `json:"{{.Name | lower}}"`
+        	{{end}}
+        }
 
-type {{.Name}}Response struct {
-	{{range .Results}}
-		{{.Names | join}} {{.Type}}
-	{{end}}
-}
+        type {{$service | uncapitalize}}{{.Name}}JsonResponse struct {
+        	{{range .Results}}
+        		{{.Name | capitalize}} {{.Type}} `json:"{{.Name | lower}}{{if .Type | eq "error"}},omitempty{{end}}"`
+        	{{end}}
+        }
+
+        func encode{{$service}}{{.Name}}JsonRequest(w io.Writer, request *{{$service | uncapitalize}}{{.Name}}JsonRequest) error {
+            return json.NewEncoder(w).Encode(request)
+        }
+
+        func encode{{$service}}{{.Name}}JsonResponse(w io.Writer, response *{{$service | uncapitalize}}{{.Name}}JsonResponse) error {
+            return json.NewEncoder(w).Encode(response)
+        }
+
+        func decode{{$service}}{{.Name}}JsonRequest(r io.Reader) (*{{$service | uncapitalize}}{{.Name}}JsonRequest, error) {
+            var request {{$service | uncapitalize}}{{.Name}}JsonRequest
+            if err := json.NewDecoder(r).Decode(&request); err != nil {
+                return nil, err
+            }
+            return &request, nil
+        }
+
+        func decode{{$service}}{{.Name}}JsonResponse(r io.Reader) (*{{$service | uncapitalize}}{{.Name}}JsonResponse, error) {
+            var response {{$service | uncapitalize}}{{.Name}}JsonResponse
+            if err := json.NewDecoder(r).Decode(&response); err != nil {
+                return nil, err
+            }
+            return &response, nil
+        }
+
+        func new{{$service}}{{.Name}}Endpoint(svc {{$service}}) endpoint.Endpoint {
+            return func(ctx context.Context, request interface{}) (interface{}, error) {
+                req := request.(*{{$service | uncapitalize}}{{.Name}}JsonRequest)
+                {{range .Results}}{{.Name | lower}}, {{end}} := svc.{{.Name}}({{range .Params}}req.{{.Name | capitalize}}, {{end}})
+                if err != nil {
+                    return {{$service | uncapitalize}}{{.Name}}JsonResponse{v, err.Error()}, nil
+                }
+                return {{$service | uncapitalize}}{{.Name}}JsonResponse{v, ""}, nil
+            }
+        }
+    {{end}}
 {{end}}
